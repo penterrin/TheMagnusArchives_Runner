@@ -1,18 +1,86 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>TMA Runner</title>
+  <title>The Archivist Descent</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="assets/vhs.png" type="image/png">
+
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600&display=swap" rel="stylesheet">
+  
 </head>
 <body>
-  <div id="menu">
-    <h1>TMA Runner</h1>
-    <button onclick="startGame()">Start</button>
+  <div id="gameContainer">
+    <canvas id="gameCanvas" width="800" height="400" style="display: none;"></canvas>
+    
+    <div id="menu">
+      <h1>The Archivist Descent</h1>
+      <button onclick="startGame()">Start</button>
+      <button onclick="showCredits()">Credits</button>
+    </div>
+
+    <div id="credits">
+      <h2>Credits</h2>
+      <p style="font-size: 14px; color: #ccc; text-align: center;">
+        Background music: 
+        <a href="https://freesound.org/people/klankbeeld/sounds/202799/" target="_blank">
+          horror ambience 64 130709_01.ogg</a><br />
+        by <a href="https://freesound.org/people/klankbeeld/" target="_blank">klankbeeld</a><br />
+        Licensed under 
+        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0</a>
+      </p>
+      <button onclick="showMenu()">Back</button>
+    </div>
   </div>
 
-  <canvas id="gameCanvas" width="800" height="400"></canvas>
+  <div id="musicControls">
+    <button id="toggleMusic">🔇 Mute</button>
+    <button id="volumeUp">🔊 +</button>
+    <button id="volumeDown">🔉 -</button>
+  </div>
+  <div id="loading">Loading levels...</div>
 
   <script src="game.js"></script>
+  <script>
+      
+  function startGame() {
+    if (!levelsLoaded) {
+      document.getElementById("loading").style.display = "block";
+      setTimeout(() => {
+      if (!levelsLoaded) {
+        alert("Levels are still loading, please wait...");
+        document.getElementById("loading").style.display = "none";
+      } else {
+        actuallyStartGame();
+      }
+    }, 1000);
+    return;
+  }
+  actuallyStartGame();
+}
+
+  function actuallyStartGame() {
+  document.getElementById("menu").style.display = "none";
+  document.getElementById("credits").style.display = "none";
+  document.getElementById("gameCanvas").style.display = "block";
+  document.getElementById("loading").style.display = "none";
+  initGame();
+    } 
+
+  function showCredits() {
+    document.getElementById("menu").style.display = "none";
+    document.getElementById("credits").style.display = "flex";
+  }
+
+  function showMenu() {
+    document.getElementById("credits").style.display = "none";
+    document.getElementById("menu").style.display = "flex";
+  }
+  </script>
+  <audio id="backgroundMusic" loop>
+    <source src="assets/background_music.ogg" type="audio/ogg">
+    Your browser does not support the audio element.
+  </audio>
 </body>
 </html>

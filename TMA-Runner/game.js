@@ -5,6 +5,8 @@ let obstacleSpeed = 3;
 let obstacles = [];
 let spawnTimer = 0;
 let score = 0;
+let backgroundMusic;
+let musicPlaying = false;
 
 let powerUps = [];
 let powerUpTimer = 0;
@@ -12,11 +14,28 @@ let activePowerUp = null;
 let powerUpDuration = 0;
 let allowSpawningObstacles = true;
 let allowSpawningPowerUps = true;
+let spiralEffectActive = false;
+let spiralWaveOffset = 0;
+
+const SPIRAL_WAVE_FREQUENCY = 0.05;
+const SPIRAL_WAVE_AMPLITUDE = 30;
 
 const SPIRAL_SLOWDOWN = 0.5;
 const ORIGINAL_JUMP_POWER = 12;
-const GROUND_Y = 390; // 300 (player Y) + 90 (altura del sprite)
+const GROUND_Y = 390;
 
+let frameCount = 0;
+
+// Add with other variables at top
+let particles = [];
+// Reemplaza la línea de PARTICLE_COLORS con esto:
+const PARTICLE_COLORS = [
+  "#3a0ca3",  // Azul oscuro
+  "#480ca8",  // Púrpura oscuro
+  "#560bad",  // Púrpura intenso
+  "#7209b7",  // Púrpura eléctrico
+  "#b5179e"   // Rosa oscuro
+];
 
 
 let nextPowerUpType = null;
@@ -25,18 +44,120 @@ let currentPhase = 1;
 let playerInvulnerable = false;
 let invulnerableTimer = 0;
 
+let levelsData = {};
+let phaseItems = [];
+let phasePointer = 0;
+let gameDistance = 0; // mide “distancia recorrida” en píxeles
 
-function startGame() {
-  document.getElementById("menu").style.display = "none";
+// At the top with other variables
+let levelsLoaded = false;
+
+// Modify your fetch call:
+fetch('levels.json')
+  .then(res => {
+    if (!res.ok) throw new Error("Failed to load levels");
+    return res.json();
+  })
+  .then(json => {
+    levelsData = json;
+    loadPhase(1);
+    levelsLoaded = true;
+  })
+  .catch(error => {
+    console.error("Error loading levels:", error);
+    // Fallback to default level if needed
+    levelsData = {
+      "1": [
+        { "x": 500, "type": "obstacle", "height": 50 },
+        { "x": 900, "type": "powerup", "powerupType": "eye", "y": 250 }
+      ]
+    };
+    loadPhase(1);
+    levelsLoaded = true;
+  });
+
+  function loadPhase(phase) {
+    console.log(`Loading phase ${phase}`);
+    phaseItems = levelsData[phase] || [];
+    phasePointer = 0;
+    gameDistance = 0;
+    obstacleSpeed = 3; 
+    console.log(`Loaded ${phaseItems.length} items for phase ${phase}`);
+  }
+
+
+class Particle {
+  constructor(angle, distance) {
+    this.centerX = canvas.width / 2;
+    this.centerY = canvas.height / 2;
+    this.angle = angle;
+    this.distance = distance;
+    this.speed = Math.random() * 0.3 + 0.1;
+    this.size = Math.random() * 2 + 1;
+    this.color = `rgba(${Math.floor(Math.random() * 30 + 70)}, 0, ${Math.floor(Math.random() * 50 + 100)}, ${Math.random() * 0.3 + 0.3})`;
+    this.life = 100;
+    this.updatePosition();
+  }
+
+  updatePosition() {
+    this.x = this.centerX + Math.cos(this.angle) * this.distance;
+    this.y = this.centerY + Math.sin(this.angle) * this.distance;
+    this.distance += this.speed;
+    this.angle += 0.03;
+  }
+
+  update() {
+    this.updatePosition();
+    this.life -= 0.7;
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.globalAlpha = this.life / 100;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function initGame() {
   canvas = document.getElementById("gameCanvas");
   ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
 
-
   player = new Player();
   gameRunning = true;
+  score = 0;
+  obstacles = [];
+  powerUps = [];
+  activePowerUp = null;
+  gameDistance = 0;
 
-  requestAnimationFrame(gameLoop);
+  // Only start the game if levels are loaded
+  if (phaseItems.length > 0) {
+    requestAnimationFrame(gameLoop);
+  } else {
+    console.error("Level data not loaded yet");
+    return;
+  }
+
+ 
+  backgroundMusic = document.getElementById('backgroundMusic');
+  backgroundMusic.volume = 0.3; // Set to 30% volume
+  
+  // Start music (many browsers require this to be user-initiated)
+  document.addEventListener('click', function firstClick() {
+    if (!musicPlaying) {
+      backgroundMusic.play().then(() => {
+        musicPlaying = true;
+      }).catch(error => {
+        console.log("Audio playback failed:", error);
+      });
+    }
+    document.removeEventListener('click', firstClick);
+  }, { once: true });
 }
 
 function gameLoop() {
@@ -54,8 +175,8 @@ function updatePhase(score) {
 
 function getPhaseName(phase) {
   switch (phase) {
-    case 1: return "ARCHIVOS";
-    case 2: return "TÚNELES";
+    case 1: return "ARCHIVES";
+    case 2: return "TUNNELS";
     case 3: return "SMIRKE";
     default: return "";
   }
@@ -64,28 +185,52 @@ function getPhaseName(phase) {
 function update() {
   player.update();
   score += 1;
-  updatePhase(score);
-
-  if (score % 500 === 0 && obstacleSpeed < 6) {
-    obstacleSpeed += 0.5;
+  // updatePhase(score);
+  // — 2 — Phase detection & reload
+  const prevPhase = currentPhase;
+  updatePhase(score);              // this sets currentPhase = 1,2 or 3
+  if (currentPhase !== prevPhase) {
+    loadPhase(currentPhase);        // reset phaseItems, phasePointer & gameDistance
   }
 
-  // Inmunidad por power-up
+  // if (score % 500 === 0 && obstacleSpeed < 6) {
+  //   obstacleSpeed += 0.5;
+  // }
+
+  
+
   if (playerInvulnerable) {
     invulnerableTimer--;
     if (invulnerableTimer <= 0) playerInvulnerable = false;
   }
 
+  gameDistance += obstacleSpeed;
 
-  let spawnInterval = 120 - (obstacleSpeed * 10);
-  spawnInterval = Math.max(spawnInterval, 40);
+  
 
-  spawnTimer++;
-  if (spawnTimer > spawnInterval && allowSpawningObstacles) {
-    const height = Math.random() * 30 + 40;
-    const newObstacle = new Obstacle(800, GROUND_Y - height, 30, height, obstacleSpeed);
-    obstacles.push(newObstacle);
-    spawnTimer = 0;
+
+
+
+  // 3) Genera según levels.json
+  while (
+    phasePointer < phaseItems.length &&
+    phaseItems[phasePointer].x <= gameDistance
+  ) {
+    const item = phaseItems[phasePointer++];
+    if (item.type === 'obstacle') {
+      obstacles.push(
+        new Obstacle(
+          800,
+          GROUND_Y - item.height,
+          30,
+          item.height,
+          obstacleSpeed
+        )
+      );
+    } else if (item.type === 'powerup') {
+      const y = item.y !== undefined ? item.y : (GROUND_Y - 60);
+      powerUps.push(new PowerUp(canvas.width, y, item.powerupType));
+    }
   }
 
   obstacles.forEach(o => o.update());
@@ -94,7 +239,7 @@ function update() {
   obstacles.forEach(o => {
     if (!playerInvulnerable && checkCollision(player, o)) {
       gameRunning = false;
-      alert("¡Has perdido! Recarga para reiniciar.");
+      alert("¡You lost: " + score + "\nReload to try again.");
     }
   });
 
@@ -125,36 +270,84 @@ function update() {
       deactivatePowerUp();
     }
   }
+
+  if (spiralEffectActive) {
+    spiralWaveOffset += 0.1;
+    
+    // Genera partículas en espiral
+    if (frameCount % 3 === 0) { // Cada 3 frames
+      const startAngle = Math.random() * Math.PI * 2;
+      particles.push(new Particle(
+        startAngle, // Ángulo inicial aleatorio
+        5 // Distancia inicial desde el centro
+      ));
+    }
+    
+    // Actualiza todas las partículas
+    particles.forEach(p => p.update());
+    particles = particles.filter(p => p.life > 0 && 
+                                   p.distance < Math.max(canvas.width, canvas.height) * 0.8);
+  }
+
 }
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  player.draw(ctx);
+
+  // 1. Dibuja el fondo del efecto espiral primero
+  if (spiralEffectActive) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(10, 0, 20, 0.7)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    const gradient = ctx.createRadialGradient(
+      canvas.width/2, canvas.height/2, 0,
+      canvas.width/2, canvas.height/2, 150
+    );
+    gradient.addColorStop(0, 'rgba(60, 0, 90, 0.8)');
+    gradient.addColorStop(1, 'rgba(10, 0, 30, 0)');
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(canvas.width/2, canvas.height/2, 150, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // 2. Dibuja las partículas (sobre el fondo pero bajo otros elementos)
+  particles.forEach(p => p.draw(ctx));
+
+  // 3. Dibuja obstáculos y power-ups
   obstacles.forEach(o => o.draw(ctx));
   powerUps.forEach(p => p.draw(ctx));
 
+  // 4. Dibuja al jugador (encima de todo)
+  player.draw(ctx);
+
+  // 5. Dibuja la UI
   ctx.fillStyle = "#fff";
   ctx.font = "20px Courier";
-  ctx.fillText("Puntuación: " + score, 10, 30);
-  ctx.fillText("Fase: " + getPhaseName(currentPhase), 10, 50);
+  ctx.fillText("Score: " + score, 10, 30);
+  ctx.fillText("Phase: " + getPhaseName(currentPhase), 10, 50);
 
   if (activePowerUp) {
-    ctx.fillText("Poder: " + activePowerUp, 10, 70);
+    ctx.fillText("Power: " + activePowerUp, 10, 70);
   }
 
   if (activePowerUp === "eye") {
     if (nextPowerUpType) {
-      ctx.fillText("Próximo poder: " + nextPowerUpType, 10, 90);
+      ctx.fillText("Next power-up: " + nextPowerUpType, 10, 90);
     }
     const nextPhase = currentPhase + 1;
     const nextScore = nextPhase * 1000;
     if (currentPhase < 3) {
-      ctx.fillText("Cambio a fase " + nextPhase + " en: " + (nextScore - score) + " pts", 10, 110);
+      ctx.fillText("Next phase: " + nextPhase + " in: " + (nextScore - score) + " pts", 10, 110);
     } else {
-      ctx.fillText("Fase final: SMIRKE", 10, 110);
+      ctx.fillText("Final phase: SMIRKE", 10, 110);
     }
   }
 }
+
 
 function activatePowerUp(type) {
   if (activePowerUp) deactivatePowerUp();
@@ -166,11 +359,20 @@ function activatePowerUp(type) {
       canvas.style.backgroundColor = "#003f2e";
       break;
     case "spiral":
-      canvas.style.backgroundColor = "#330033";
-      canvas.style.filter = "blur(1px)";
-      obstacleSpeed *= SPIRAL_SLOWDOWN;
-      spawnTimer = 60;
-      player.jumpPower = ORIGINAL_JUMP_POWER * SPIRAL_SLOWDOWN;
+      spiralEffectActive = true;
+      particles = [];
+      // Add particle burst on activation
+       // Explosión inicial en espiral
+      for (let i = 0; i < 36; i++) {
+      particles.push(new Particle(
+      (i / 36) * Math.PI * 2, // Ángulo equidistante
+      0 // Comenzando desde el centro
+      ));
+     }
+      canvas.style.backgroundColor = "#110033";
+      obstacleSpeed *= 0.7; // Only 30% speed reduction
+      player.jumpPower = ORIGINAL_JUMP_POWER * 1.3; // Better jumps
+      player.gravity = 0.3; // Reduced gravity for floaty feel
       break;
     case "lonely":
       canvas.style.backgroundColor = "#001f3f";
@@ -188,10 +390,12 @@ function deactivatePowerUp() {
       canvas.style.backgroundColor = "#000";
       break;
     case "spiral":
+      spiralEffectActive = false;
+      particles = [];
       canvas.style.backgroundColor = "#000";
-      canvas.style.filter = "none";
-      obstacleSpeed /= SPIRAL_SLOWDOWN;
+      obstacleSpeed /= 0.7;
       player.jumpPower = ORIGINAL_JUMP_POWER;
+      player.gravity = 0.5;
       break;
     case "lonely":
       canvas.style.backgroundColor = "#000";
@@ -204,10 +408,9 @@ function deactivatePowerUp() {
 }
 
 class Player {
-  
   constructor() {
     this.x = 100;
-    this.y = 300;
+    this.y = GROUND_Y - 90;
     this.width = 61;
     this.height = 90;
     this.velocityY = 0;
@@ -215,10 +418,16 @@ class Player {
     this.gravity = 0.5;
     this.isJumping = false;
 
-    this.y = GROUND_Y - 90; // si tu sprite mide 90px de alto
+    // Hitbox ajustada (15px margen izquierdo, 20px margen superior)
+    this.hitbox = {
+      x: 15,
+      y: 20,
+      width: 31, // 61 - 15 - 15
+      height: 50 // 90 - 20 - 20
+    };
 
     this.sprite = new Image();
-    this.sprite.src = "assets/Jon_Run2.png"; // ajusta si tu ruta es distinta
+    this.sprite.src = "assets/Jon_Run2.png";
 
     this.frameX = 0;
     this.frameY = 0;
@@ -226,7 +435,7 @@ class Player {
     this.frameHeight = 90;
     this.frameCount = 8;
     this.frameTimer = 0;
-    this.frameDelay = 6; // menor = animación más rápida
+    this.frameDelay = 10;
   }
 
   update() {
@@ -237,9 +446,7 @@ class Player {
       this.velocityY = 0;
       this.isJumping = false;
     }
-    
 
-    // Animación solo si está en suelo
     if (!this.isJumping) {
       this.frameTimer++;
       if (this.frameTimer >= this.frameDelay) {
@@ -247,17 +454,11 @@ class Player {
         this.frameTimer = 0;
       }
     } else {
-      this.frameX = 0; // frame quieto al saltar
+      this.frameX = 0;
     }
-
   }
 
   draw(ctx) {
-
-    ctx.strokeStyle = "red";
-    ctx.strokeRect(this.x + 15, this.y + 20, this.width - 30, this.height - 40);
-
-
     const sx = this.frameX * this.frameWidth;
     const sy = this.frameY * this.frameHeight;
 
@@ -293,6 +494,12 @@ class Obstacle {
 
   update() {
     this.x -= this.speed;
+    
+    if (spiralEffectActive) {
+      // Add sinusoidal wave movement to obstacles
+      this.y = GROUND_Y - this.height + 
+               Math.sin(this.x * SPIRAL_WAVE_FREQUENCY + spiralWaveOffset) * SPIRAL_WAVE_AMPLITUDE;
+    }
   }
 
   draw(ctx) {
@@ -342,22 +549,71 @@ class PowerUp {
   }
 }
 
-function checkCollision(a, b) {
-  // hitbox ajustada del jugador (a)
-  const marginX = 15;
-  const marginY = 20;
+
+
+function checkCollision(player, object) {
+  const playerBox = {
+    x: player.x + player.hitbox.x,
+    y: player.y + player.hitbox.y,
+    width: player.hitbox.width,
+    height: player.hitbox.height
+  };
 
   return (
-    a.x + marginX < b.x + b.width &&
-    a.x + a.width - marginX > b.x &&
-    a.y + marginY < b.y + b.height &&
-    a.y + a.height - marginY > b.y
+    playerBox.x < object.x + object.width &&
+    playerBox.x + playerBox.width > object.x &&
+    playerBox.y < object.y + object.height &&
+    playerBox.y + playerBox.height > object.y
   );
 }
-
-
 window.addEventListener("keydown", function(e) {
   if (e.code === "Space") {
     player.jump();
   }
 });
+
+// Music controls
+document.getElementById('toggleMusic').addEventListener('click', function() {
+  if (backgroundMusic.paused) {
+    backgroundMusic.play();
+    this.textContent = "🔇 Mute";
+    musicPlaying = true;
+  } else {
+    backgroundMusic.pause();
+    this.textContent = "🔈 Unmute";
+    musicPlaying = false;
+  }
+});
+
+document.getElementById('volumeUp').addEventListener('click', function() {
+  if (backgroundMusic.volume < 1) {
+    backgroundMusic.volume = Math.min(1, backgroundMusic.volume + 0.1);
+  }
+});
+
+document.getElementById('volumeDown').addEventListener('click', function() {
+  if (backgroundMusic.volume > 0) {
+    backgroundMusic.volume = Math.max(0, backgroundMusic.volume - 0.1);
+  }
+});
+
+/// Muestra la pantalla de juego y oculta menú/créditos
+function startGame() {
+  document.getElementById("menu").style.display = "none";
+  document.getElementById("credits").style.display = "none";
+  document.getElementById("gameCanvas").style.display = "block";
+  // Aquí llamas a tu initGame() o requestAnimationFrame(gameLoop)
+}
+
+// Oculta menú y muestra créditos
+function showCredits() {
+  document.getElementById("menu").style.display = "none";
+  document.getElementById("credits").style.display = "flex";
+}
+
+// Vuelve de créditos al menú principal
+function showMenu() {
+  document.getElementById("credits").style.display = "none";
+  document.getElementById("menu").style.display = "flex";
+}
+
