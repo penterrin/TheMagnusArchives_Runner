@@ -64,10 +64,10 @@ fetch('levels.json')
     levelsData = json;
     loadPhase(1);
     levelsLoaded = true;
+    console.log("Levels loaded successfully");
   })
   .catch(error => {
     console.error("Error loading levels:", error);
-    // Fallback to default level if needed
     levelsData = {
       "1": [
         { "x": 500, "type": "obstacle", "height": 50 },
@@ -78,15 +78,59 @@ fetch('levels.json')
     levelsLoaded = true;
   });
 
-  function loadPhase(phase) {
-    console.log(`Loading phase ${phase}`);
-    phaseItems = levelsData[phase] || [];
-    phasePointer = 0;
-    gameDistance = 0;
-    obstacleSpeed = 3; 
-    console.log(`Loaded ${phaseItems.length} items for phase ${phase}`);
+function loadPhase(phase) {
+  currentPhase = phase;
+  
+  if (phase === 4) {
+    if (canvas && canvas.style) {
+      canvas.style.filter = "contrast(1.5) brightness(0.8)";
+    }
+    if (backgroundMusic) {
+      backgroundMusic.playbackRate = 0.9;
+    }
+  } else {
+    if (canvas && canvas.style) {
+      canvas.style.filter = "none";
+    }
+    if (backgroundMusic) {
+      backgroundMusic.playbackRate = 1.0;
+    }
   }
 
+  phaseItems = (phase <= 3) ? 
+    levelsData[phase] || [] : 
+    generateEndlessLevel();
+  
+  phasePointer = 0;
+  gameDistance = 0;
+}
+
+function generateEndlessLevel() {
+  const obstacles = [];
+  const baseSpeed = 3 + Math.floor((score-3000)/2000);
+  
+  for (let i = 0; i < 6 + Math.floor(Math.random() * 4); i++) {
+    const isDistorted = Math.random() > 0.5;
+    obstacles.push({
+      x: 300 + i * (400 + Math.random() * 200),
+      type: "obstacle",
+      height: isDistorted ? 30 + Math.random() * 100 : 50 + Math.random() * 50,
+      distorted: isDistorted
+    });
+  }
+
+  if (Math.random() > 0.66) {
+    obstacles.push({
+      x: 2500,
+      type: "powerup",
+      powerupType: ["eye","spiral","lonely"][Math.floor(Math.random()*3)],
+      y: 200 + Math.random() * 100,
+      distorted: true
+    });
+  }
+
+  return obstacles;
+}
 
 class Particle {
   constructor(angle, distance) {
@@ -184,7 +228,8 @@ function gameLoop() {
 function updatePhase(score) {
   if (score < 1000) currentPhase = 1;
   else if (score < 2000) currentPhase = 2;
-  else currentPhase = 3;
+  else if (score < 3000) currentPhase = 3;
+  else currentPhase = 4;
 }
 
 function getPhaseName(phase) {
@@ -192,6 +237,7 @@ function getPhaseName(phase) {
     case 1: return "ARCHIVES";
     case 2: return "TUNNELS";
     case 3: return "SMIRKE";
+    case 4: return "THE ENDLESS";
     default: return "";
   }
 }
@@ -226,21 +272,10 @@ function update() {
 
 
   // 3) Genera según levels.json
-  while (
-    phasePointer < phaseItems.length &&
-    phaseItems[phasePointer].x <= gameDistance
-  ) {
+  while (phasePointer < phaseItems.length && phaseItems[phasePointer].x <= gameDistance) {
     const item = phaseItems[phasePointer++];
     if (item.type === 'obstacle') {
-      obstacles.push(
-        new Obstacle(
-          800,
-          GROUND_Y - item.height,
-          30,
-          item.height,
-          obstacleSpeed
-        )
-      );
+      obstacles.push(new Obstacle(800, GROUND_Y - item.height, 30, item.height, obstacleSpeed));
     } else if (item.type === 'powerup') {
       const y = item.y !== undefined ? item.y : (GROUND_Y - 60);
       powerUps.push(new PowerUp(canvas.width, y, item.powerupType));
@@ -308,6 +343,18 @@ function update() {
                                    p.distance < Math.max(canvas.width, canvas.height) * 0.8);
   }
 
+  if (currentPhase === 4) {
+    if (Math.random() > 0.99 && !playerInvulnerable) {
+      const whisper = new Audio("assets/whisper.ogg");
+      whisper.volume = 0.3;
+      whisper.play().catch(e => {});
+    }
+  
+    if (Math.random() > 0.995) {
+      canvas.style.transform = `translate(${Math.random()*4-2}px, ${Math.random()*4-2}px)`;
+      setTimeout(() => canvas.style.transform = "", 200);
+    }
+  }
 }
 
 function draw() {
