@@ -38,6 +38,8 @@ const PARTICLE_COLORS = [
 ];
 
 
+
+
 let nextPowerUpType = null;
 let currentPhase = 1;
 
@@ -50,7 +52,7 @@ let phasePointer = 0;
 let gameDistance = 0; // mide “distancia recorrida” en píxeles
 
 // At the top with other variables
-let levelsLoaded = false;
+
 
 // Modify your fetch call:
 fetch('levels.json')
@@ -143,6 +145,17 @@ function initGame() {
     return;
   }
 
+  const deathSound = document.getElementById('deathSound');
+  deathSound.volume = 0.4;
+
+  // Force preload (mobile browsers require user interaction)
+  const jumpSound = document.getElementById('jumpSound');
+  jumpSound.volume = 0;
+  jumpSound.play().then(() => {
+    jumpSound.pause();
+    jumpSound.volume = 0.3;
+  }).catch(e => console.log("Preload failed (will work after click)"));
+
  
   backgroundMusic = document.getElementById('backgroundMusic');
   backgroundMusic.volume = 0.3; // Set to 30% volume
@@ -158,6 +171,7 @@ function initGame() {
     }
     document.removeEventListener('click', firstClick);
   }, { once: true });
+  
 }
 
 function gameLoop() {
@@ -238,8 +252,13 @@ function update() {
 
   obstacles.forEach(o => {
     if (!playerInvulnerable && checkCollision(player, o)) {
+      deathSound.currentTime = 0; // Rewind sound if already playing
+      deathSound.play().catch(e => console.log("Death sound error:", e));
+
       gameRunning = false;
-      alert("¡You lost: " + score + "\nReload to try again.");
+      setTimeout(() => { // Small delay before alert
+        alert("¡You lost: " + score + "\nReload to try again.");
+      }, 300);
     }
   });
 
@@ -436,6 +455,23 @@ class Player {
     this.frameCount = 8;
     this.frameTimer = 0;
     this.frameDelay = 10;
+
+    this.tintedSprite = new Image();
+    this.tintedSprite.src = "assets/Jon_Run2_tinted.png"; // Pre-made green version
+    this.isTintedLoaded = false;
+    this.tintedSprite.onload = () => this.isTintedLoaded = true;
+    this.jumpSound = document.getElementById('jumpSound');
+    this.jumpSound.volume = 0.3; // Lower than background music
+
+  }
+  
+  jump() {
+    if (!this.isJumping) {
+      this.velocityY = -this.jumpPower;
+      this.isJumping = true;
+      this.jumpSound.currentTime = 0; // Reset if already playing
+      this.jumpSound.play().catch(e => console.log("Jump sound error:", e));
+    }
   }
 
   update() {
@@ -462,25 +498,23 @@ class Player {
     const sx = this.frameX * this.frameWidth;
     const sy = this.frameY * this.frameHeight;
 
+    const spriteToUse = (playerInvulnerable && this.isTintedLoaded) 
+      ? this.tintedSprite 
+      : this.sprite;
+
     ctx.drawImage(
-      this.sprite,
+      spriteToUse,
       sx, sy, this.frameWidth, this.frameHeight,
       this.x, this.y, this.width, this.height
     );
 
-    if (playerInvulnerable) {
-      ctx.strokeStyle = "#00ff00";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(this.x, this.y, this.width, this.height);
-    }
+    // if (playerInvulnerable) {
+    //   const pulse = Math.sin(Date.now() / 200) * 0.2 + 0.8; // 0.6-1.0 range
+    //   ctx.globalAlpha = pulse; // Makes the tint pulse slightly
+    // }
+    
   }
 
-  jump() {
-    if (!this.isJumping) {
-      this.velocityY = -this.jumpPower;
-      this.isJumping = true;
-    }
-  }
 }
 
 class Obstacle {
