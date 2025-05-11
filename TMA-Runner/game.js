@@ -132,6 +132,36 @@ function generateEndlessLevel() {
   return obstacles;
 }
 
+
+const BG_LAYERS = {
+  far: { 
+     img: new Image(), 
+    speed: 0.02,  // Reduced from 0.2 to 0.02 (10x slower)
+    y: 0,
+    width: 768,
+    height: 448,
+    x: 0,
+    parallaxMultiplier: 0.1  // New: Extra slowdown factor
+  },
+  mid: {
+    img: new Image(),
+    speed: 0.5,
+    y: 24,  // (400-358)/2 ≈ 21, rounded to 24 for crisp pixels
+    width: 384,
+    height: 358,
+    x: 0
+  },
+  near: {
+    img: new Image(),
+    speed: 0.8,
+    y: 0,   // Align to bottom
+    width: 768,
+    height: 448,
+    x: 0
+  }
+};
+
+
 class Particle {
   constructor(angle, distance) {
     this.centerX = canvas.width / 2;
@@ -215,6 +245,19 @@ function initGame() {
     }
     document.removeEventListener('click', firstClick);
   }, { once: true });
+
+   // Load background images
+  BG_LAYERS.far.img.src = "assets/bg_far.png";
+  BG_LAYERS.mid.img.src = "assets/bg_mid.png";
+  BG_LAYERS.near.img.src = "assets/bg_near.png";
+  
+  // Phase-specific tints
+  ctx.bgTintColors = {
+    1: { far: "#0a0e23", mid: "#3a2716", near: "#1a110a" }, // ARCHIVES
+    2: { far: "#111122", mid: "#252535", near: "#3d3d3d" },  // TUNNELS
+    3: { far: "#1a0026", mid: "#3d0a4a", near: "#250330" },  // SMIRKE
+    4: { far: "#000000", mid: "#110011", near: "#220022" }   // ENDLESS
+  };
   
 }
 
@@ -265,11 +308,6 @@ function update() {
   }
 
   gameDistance += obstacleSpeed;
-
-  
-
-
-
 
   // 3) Genera según levels.json
   while (phasePointer < phaseItems.length && phaseItems[phasePointer].x <= gameDistance) {
@@ -355,10 +393,31 @@ function update() {
       setTimeout(() => canvas.style.transform = "", 200);
     }
   }
+  // Move backgrounds
+  BG_LAYERS.far.x -= (obstacleSpeed * BG_LAYERS.far.speed * BG_LAYERS.far.parallaxMultiplier);
+  BG_LAYERS.mid.x -= obstacleSpeed * BG_LAYERS.mid.speed;
+  BG_LAYERS.near.x -= obstacleSpeed * BG_LAYERS.near.speed;
+  
+  // Phase transition effects
+  if (currentPhase === 4) {
+    BG_LAYERS.far.y = Math.sin(Date.now()/5000) * 2; // Very slow vertical float
+    BG_LAYERS.far.x += Math.sin(Date.now()/8000) * 0.1; // Micro horizontal drift
+  } else {
+    BG_LAYERS.far.y = 0;
+    BG_LAYERS.mid.y = 24;
+  }
 }
 
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = ctx.bgTintColors[currentPhase].far;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Draw parallax layers
+  drawParallaxLayer(BG_LAYERS.far);
+  drawParallaxLayer(BG_LAYERS.mid);
+  drawParallaxLayer(BG_LAYERS.near);
+  
 
   // 1. Dibuja el fondo del efecto espiral primero
   if (spiralEffectActive) {
@@ -414,6 +473,55 @@ function draw() {
   }
 }
 
+function drawParallaxLayer(layer) {
+  if (!layer.img.complete) {
+    // Fallback: Solid color if image not loaded
+    ctx.fillStyle = ctx.bgTintColors[currentPhase][layer === BG_LAYERS.far ? "far" : 
+                       layer === BG_LAYERS.mid ? "mid" : "near"];
+    ctx.fillRect(0, layer.y, canvas.width, layer.height);
+    return;
+  }
+
+  const drawY = canvas.height - layer.height + layer.y;
+  const phase = currentPhase;
+  
+  // Draw tiled background
+  let currentX = layer.x % layer.width;
+  while (currentX < canvas.width) {
+    // Base image
+    ctx.save();
+    if (phase === 4) {
+      ctx.filter = `hue-rotate(${Math.sin(layer.x/500)*15}deg) contrast(1.2)`;
+    }
+    ctx.drawImage(
+      layer.img,
+      0, 0, layer.width, layer.height,
+      currentX, drawY, layer.width, layer.height
+    );
+    ctx.restore();
+    
+    // Glitch effect for ENDLESS phase
+    if (phase === 4 && Math.random() > 0.7) {
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.drawImage(
+        layer.img,
+        0, 0, layer.width, layer.height,
+        currentX + (Math.random()*4-2), 
+        drawY + (Math.random()*3-1),
+        layer.width, 
+        layer.height
+      );
+      ctx.restore();
+    }
+    
+    currentX += layer.width;
+  }
+  
+  
+
+
+}
 
 function activatePowerUp(type) {
   if (activePowerUp) deactivatePowerUp();
