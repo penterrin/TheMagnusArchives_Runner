@@ -109,26 +109,38 @@ function generateEndlessLevel() {
   const obstacles = [];
   const baseSpeed = 3 + Math.floor((score-3000)/2000);
   
-  for (let i = 0; i < 6 + Math.floor(Math.random() * 4); i++) {
+  const difficulty = Math.min(1 + (score-3000)/5000, 3); // Scales from 1-3
+  const spacing = 400 / difficulty; // Gets tighter as score increases
+  
+  // Generate obstacles until we cover 3000px ahead
+  let x = gameDistance;
+  while (x < gameDistance + 3000) {
     const isDistorted = Math.random() > 0.5;
+    const spacing = 300 + Math.random() * 200;
+    
     obstacles.push({
-      x: 300 + i * (400 + Math.random() * 200),
+      x: x,
       type: "obstacle",
-      height: isDistorted ? 30 + Math.random() * 100 : 50 + Math.random() * 50,
+      height: isDistorted ? 
+        30 + Math.random() * 100 : 
+        50 + Math.random() * 50,
       distorted: isDistorted
     });
+    
+    x += spacing;
+    
+    // 15% chance for powerup after each obstacle
+    if (Math.random() > 0.85) {
+      obstacles.push({
+        x: x - 150,
+        type: "powerup",
+        powerupType: ["eye","spiral","lonely"][Math.floor(Math.random()*3)],
+        y: 200 + Math.random() * 100,
+        distorted: true
+      });
+    }
   }
-
-  if (Math.random() > 0.66) {
-    obstacles.push({
-      x: 2500,
-      type: "powerup",
-      powerupType: ["eye","spiral","lonely"][Math.floor(Math.random()*3)],
-      y: 200 + Math.random() * 100,
-      distorted: true
-    });
-  }
-
+  
   return obstacles;
 }
 
@@ -363,6 +375,22 @@ function update() {
     }
   }
 
+  if (activePowerUp !== "lonely" && ctx.lonelyDarkness > 0) {
+  ctx.lonelyDarkness = Math.max(0, ctx.lonelyDarkness - 0.008);
+  }
+
+  if (activePowerUp === "lonely") {
+  // Gradually increase darkness
+  if (ctx.lonelyDarkness < 0.7) {
+    ctx.lonelyDarkness += 0.005;
+  }
+  
+  // Occasional distant whispers (33% chance per second)
+  if (frameCount % 60 === 0 && Math.random() > 0.66) {
+    new Audio('assets/whisper_far.ogg').play().catch(e => {});
+  }
+}
+
   if (spiralEffectActive) {
     spiralWaveOffset += 0.1;
     
@@ -392,6 +420,10 @@ function update() {
       canvas.style.transform = `translate(${Math.random()*4-2}px, ${Math.random()*4-2}px)`;
       setTimeout(() => canvas.style.transform = "", 200);
     }
+    if (gameDistance > phaseItems[phaseItems.length-1]?.x - 1000) {
+    const newItems = generateEndlessLevel();
+    phaseItems = phaseItems.concat(newItems);
+  }
   }
   // Move backgrounds
   BG_LAYERS.far.x -= (obstacleSpeed * BG_LAYERS.far.speed * BG_LAYERS.far.parallaxMultiplier);
@@ -471,7 +503,36 @@ function draw() {
       ctx.fillText("Final phase: SMIRKE", 10, 110);
     }
   }
+  if (activePowerUp === "lonely" || ctx.lonelyDarkness > 0) {
+    ctx.save();
+    
+    // Continue fading out even after powerup ends
+    if (activePowerUp !== "lonely" && ctx.lonelyDarkness > 0) {
+      ctx.lonelyDarkness = Math.max(0, ctx.lonelyDarkness - 0.01);
+    }
+    
+    ctx.fillStyle = `rgba(0, 0, 20, ${ctx.lonelyDarkness})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  if (activePowerUp === "lonely") {
+    ctx.save();
+    ctx.fillStyle = `rgba(0, 0, 20, ${ctx.lonelyDarkness})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    
+    // Add subtle vignette
+    const gradient = ctx.createRadialGradient(
+      canvas.width/2, canvas.height/2, 100,
+      canvas.width/2, canvas.height/2, 300
+    );
+    gradient.addColorStop(0, 'transparent');
+    gradient.addColorStop(1, 'rgba(0, 0, 40, 0.8)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+  }
 }
+
 
 function drawParallaxLayer(layer) {
   if (!layer.img.complete) {
@@ -549,11 +610,20 @@ function activatePowerUp(type) {
       player.gravity = 0.3; // Reduced gravity for floaty feel
       break;
     case "lonely":
-      canvas.style.backgroundColor = "#001f3f";
+       // New oppressive effect
+      ctx.lonelyDarkness = 0; // Start from 0
+      
+      // Clear all entities
       obstacles = [];
       powerUps = [];
       allowSpawningObstacles = false;
       allowSpawningPowerUps = false;
+      
+      // Audio effect
+      this.lonelySound = new Audio('assets/lonely_effect.ogg');
+      this.lonelySound.volume = 0.4;
+      this.lonelySound.loop = true;  // Only if you want it to loop
+      this.lonelySound.play().catch(e => {});
       break;
   }
 }
@@ -572,9 +642,20 @@ function deactivatePowerUp() {
       player.gravity = 0.5;
       break;
     case "lonely":
-      canvas.style.backgroundColor = "#000";
+      ctx.lonelyDarkness = 0;
       allowSpawningObstacles = true;
       allowSpawningPowerUps = true;
+      
+      // Fade out sound if you added it
+      if (this.lonelySound) {
+        const fadeOut = setInterval(() => {
+          this.lonelySound.volume = Math.max(0, this.lonelySound.volume - 0.05);
+          if (this.lonelySound.volume <= 0) {
+            this.lonelySound.pause();
+            clearInterval(fadeOut);
+          }
+        }, 100);
+      }
       break;
   }
   activePowerUp = null;
