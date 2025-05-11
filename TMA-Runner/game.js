@@ -571,7 +571,51 @@ class Obstacle {
     this.width = width;
     this.height = height;
     this.speed = speed;
+    
+    // Load obstacle images
+    this.images = {
+      1: new Image(),
+      2: new Image(),
+      3: new Image(),
+      4: new Image()
+    };
+    this.images[1].src = "assets/phase1_obstacle.png";
+    this.images[2].src = "assets/phase2_obstacle.png";
+    this.images[3].src = "assets/phase3_obstacle.png";
+    this.images[4].src = "assets/phase4_obstacle.png";
   }
+  
+  draw(ctx) {
+    // Use image if loaded, otherwise fallback to rectangle
+    if (this.images[currentPhase] && this.images[currentPhase].complete) {
+      ctx.drawImage(
+        this.images[currentPhase],
+        this.x, this.y, this.width, this.height
+      );
+      
+      // Add glitch effect for endless phase
+      if (currentPhase === 4 && this.distorted) {
+        ctx.save();
+        ctx.filter = `hue-rotate(${Math.sin(Date.now()/200)*90}deg)`;
+        ctx.globalAlpha = 0.7;
+        ctx.drawImage(
+          this.images[currentPhase],
+          this.x-2, this.y-2, this.width+4, this.height+4
+        );
+        ctx.restore();
+      }
+    } else {
+      // Fallback to colored rectangles
+      switch (currentPhase) {
+        case 1: ctx.fillStyle = "#800"; break;
+        case 2: ctx.fillStyle = "#446"; break;
+        case 3: ctx.fillStyle = "#520060"; break;
+        case 4: ctx.fillStyle = "#333"; break;
+      }
+      ctx.fillRect(this.x, this.y, this.width, this.height);
+    }
+  }
+  
 
   update() {
     this.x -= this.speed;
@@ -583,14 +627,7 @@ class Obstacle {
     }
   }
 
-  draw(ctx) {
-    switch (currentPhase) {
-      case 1: ctx.fillStyle = "#800"; break;
-      case 2: ctx.fillStyle = "#446"; break;
-      case 3: ctx.fillStyle = "#520060"; break;
-    }
-    ctx.fillRect(this.x, this.y, this.width, this.height);
-  }
+  
 
   isOffScreen() {
     return this.x + this.width < 0;
