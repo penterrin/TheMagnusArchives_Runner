@@ -26,9 +26,9 @@ const GROUND_Y = 390;
 
 let frameCount = 0;
 
-// Add with other variables at top
+
 let particles = [];
-// Reemplaza la línea de PARTICLE_COLORS con esto:
+
 const PARTICLE_COLORS = [
   "#3a0ca3",  // Azul oscuro
   "#480ca8",  // Púrpura oscuro
@@ -49,12 +49,12 @@ let invulnerableTimer = 0;
 let levelsData = {};
 let phaseItems = [];
 let phasePointer = 0;
-let gameDistance = 0; // mide “distancia recorrida” en píxeles
-
-// At the top with other variables
+let gameDistance = 0; 
 
 
-// Modify your fetch call:
+
+
+
 fetch('levels.json')
   .then(res => {
     if (!res.ok) throw new Error("Failed to load levels");
@@ -109,10 +109,9 @@ function generateEndlessLevel() {
   const obstacles = [];
   const baseSpeed = 3 + Math.floor((score-3000)/2000);
   
-  const difficulty = Math.min(1 + (score-3000)/5000, 3); // Scales from 1-3
-  const spacing = 400 / difficulty; // Gets tighter as score increases
+  const difficulty = Math.min(1 + (score-3000)/5000, 3);
+  const spacing = 400 / difficulty; 
   
-  // Generate obstacles until we cover 3000px ahead
   let x = gameDistance;
   while (x < gameDistance + 3000) {
     const isDistorted = Math.random() > 0.5;
@@ -129,14 +128,14 @@ function generateEndlessLevel() {
     
     x += spacing;
     
-    // 15% chance for powerup after each obstacle
+    
     if (Math.random() > 0.85) {
       obstacles.push({
-        x: x - 150,
-        type: "powerup",
-        powerupType: ["eye","spiral","lonely"][Math.floor(Math.random()*3)],
-        y: 200 + Math.random() * 100,
-        distorted: true
+        x: 2500,
+      type: "powerup",
+      powerupType: ["eye","spiral","lonely"][Math.floor(Math.random()*3)],
+      y: 200 + Math.random() * 100,
+      distorted: true
       });
     }
   }
@@ -148,17 +147,17 @@ function generateEndlessLevel() {
 const BG_LAYERS = {
   far: { 
      img: new Image(), 
-    speed: 0.02,  // Reduced from 0.2 to 0.02 (10x slower)
+    speed: 0.02,  
     y: 0,
     width: 768,
     height: 448,
     x: 0,
-    parallaxMultiplier: 0.1  // New: Extra slowdown factor
+    parallaxMultiplier: 0.1  
   },
   mid: {
     img: new Image(),
     speed: 0.5,
-    y: 24,  // (400-358)/2 ≈ 21, rounded to 24 for crisp pixels
+    y: 24,  
     width: 384,
     height: 358,
     x: 0
@@ -166,7 +165,7 @@ const BG_LAYERS = {
   near: {
     img: new Image(),
     speed: 0.8,
-    y: 0,   // Align to bottom
+    y: 0,  
     width: 768,
     height: 448,
     x: 0
@@ -223,7 +222,7 @@ function initGame() {
   activePowerUp = null;
   gameDistance = 0;
 
-  // Only start the game if levels are loaded
+
   if (phaseItems.length > 0) {
     requestAnimationFrame(gameLoop);
   } else {
@@ -234,7 +233,7 @@ function initGame() {
   const deathSound = document.getElementById('deathSound');
   deathSound.volume = 0.4;
 
-  // Force preload (mobile browsers require user interaction)
+  
   const jumpSound = document.getElementById('jumpSound');
   jumpSound.volume = 0;
   jumpSound.play().then(() => {
@@ -244,9 +243,9 @@ function initGame() {
 
  
   backgroundMusic = document.getElementById('backgroundMusic');
-  backgroundMusic.volume = 0.3; // Set to 30% volume
+  backgroundMusic.volume = 0.3; 
   
-  // Start music (many browsers require this to be user-initiated)
+ 
   document.addEventListener('click', function firstClick() {
     if (!musicPlaying) {
       backgroundMusic.play().then(() => {
@@ -258,18 +257,22 @@ function initGame() {
     document.removeEventListener('click', firstClick);
   }, { once: true });
 
-   // Load background images
+
   BG_LAYERS.far.img.src = "assets/bg_far.png";
   BG_LAYERS.mid.img.src = "assets/bg_mid.png";
   BG_LAYERS.near.img.src = "assets/bg_near.png";
-  
-  // Phase-specific tints
+ 
   ctx.bgTintColors = {
-    1: { far: "#0a0e23", mid: "#3a2716", near: "#1a110a" }, // ARCHIVES
-    2: { far: "#111122", mid: "#252535", near: "#3d3d3d" },  // TUNNELS
-    3: { far: "#1a0026", mid: "#3d0a4a", near: "#250330" },  // SMIRKE
-    4: { far: "#000000", mid: "#110011", near: "#220022" }   // ENDLESS
-  };
+    1: { far: "#0a0e23", mid: "#3a2716", near: "#1a110a" },
+    2: { far: "#111122", mid: "#252535", near: "#3d3d3d" }, 
+    3: { far: "#1a0026", mid: "#3d0a4a", near: "#250330" },  
+    4: { far: "#000000", mid: "#110011", near: "#220022" }   
+  };ND
+  const powerUpTypes = ["eye", "spiral", "lonely"];
+  powerUpTypes.forEach(type => {
+    const img = new Image();
+    img.src = `assets/powerups/${type}.png`;
+  });
   
 }
 
@@ -300,12 +303,11 @@ function getPhaseName(phase) {
 function update() {
   player.update();
   score += 1;
-  // updatePhase(score);
-  // — 2 — Phase detection & reload
+ 
   const prevPhase = currentPhase;
-  updatePhase(score);              // this sets currentPhase = 1,2 or 3
+  updatePhase(score);             
   if (currentPhase !== prevPhase) {
-    loadPhase(currentPhase);        // reset phaseItems, phasePointer & gameDistance
+    loadPhase(currentPhase);       
   }
 
   // if (score % 500 === 0 && obstacleSpeed < 6) {
@@ -321,14 +323,14 @@ function update() {
 
   gameDistance += obstacleSpeed;
 
-  // 3) Genera según levels.json
+
   while (phasePointer < phaseItems.length && phaseItems[phasePointer].x <= gameDistance) {
     const item = phaseItems[phasePointer++];
     if (item.type === 'obstacle') {
       obstacles.push(new Obstacle(800, GROUND_Y - item.height, 30, item.height, obstacleSpeed));
-    } else if (item.type === 'powerup') {
-      const y = item.y !== undefined ? item.y : (GROUND_Y - 60);
-      powerUps.push(new PowerUp(canvas.width, y, item.powerupType));
+    } else if (item.type === 'powerup')  {
+  const y = item.y !== undefined ? item.y : (GROUND_Y - 60);
+  powerUps.push(new PowerUp(canvas.width, y, item.powerupType));
     }
   }
 
@@ -337,25 +339,31 @@ function update() {
 
   obstacles.forEach(o => {
     if (!playerInvulnerable && checkCollision(player, o)) {
-      deathSound.currentTime = 0; // Rewind sound if already playing
+      deathSound.currentTime = 0; 
       deathSound.play().catch(e => console.log("Death sound error:", e));
 
       gameRunning = false;
-      setTimeout(() => { // Small delay before alert
+      setTimeout(() => {
         alert("¡You lost: " + score + "\nReload to try again.");
       }, 300);
     }
   });
 
-  powerUpTimer++;
-  if (powerUpTimer > 600 && allowSpawningPowerUps) {
-    const y = Math.random() * 80 + 220;
-    const types = ["eye", "spiral", "lonely"];
-    const type = types[Math.floor(Math.random() * types.length)];
+powerUpTimer++;
+if (powerUpTimer > 900 && allowSpawningPowerUps && Math.random() > 0.5) { 
+  const y = Math.random() * 100 + 200; 
+  const types = ["eye", "spiral", "lonely"];
+  const type = types[Math.floor(Math.random() * types.length)];
+  
+ 
+  const lastPowerUpX = powerUps.length > 0 ? powerUps[powerUps.length-1].x : 0;
+  if (powerUps.length === 0 || canvas.width - lastPowerUpX > 400) {
     nextPowerUpType = type;
-    powerUps.push(new PowerUp(800, y, type));
+    powerUps.push(new PowerUp(canvas.width, y, type));
     powerUpTimer = 0;
   }
+
+}
 
   powerUps.forEach(p => p.update());
   powerUps = powerUps.filter(p => {
@@ -363,6 +371,7 @@ function update() {
       activatePowerUp(p.type);
       playerInvulnerable = true;
       invulnerableTimer = 60;
+      powerUpTimer = -600;
       return false;
     }
     return !p.isOffScreen();
@@ -380,30 +389,28 @@ function update() {
   }
 
   if (activePowerUp === "lonely") {
-  // Gradually increase darkness
+  
   if (ctx.lonelyDarkness < 0.7) {
     ctx.lonelyDarkness += 0.005;
   }
   
-  // Occasional distant whispers (33% chance per second)
-  if (frameCount % 60 === 0 && Math.random() > 0.66) {
-    new Audio('assets/whisper_far.ogg').play().catch(e => {});
-  }
+  
+ 
 }
 
   if (spiralEffectActive) {
     spiralWaveOffset += 0.1;
     
-    // Genera partículas en espiral
-    if (frameCount % 3 === 0) { // Cada 3 frames
+    
+    if (frameCount % 3 === 0) {
       const startAngle = Math.random() * Math.PI * 2;
       particles.push(new Particle(
-        startAngle, // Ángulo inicial aleatorio
-        5 // Distancia inicial desde el centro
+        startAngle, 
+        5 
       ));
     }
     
-    // Actualiza todas las partículas
+    
     particles.forEach(p => p.update());
     particles = particles.filter(p => p.life > 0 && 
                                    p.distance < Math.max(canvas.width, canvas.height) * 0.8);
@@ -425,15 +432,15 @@ function update() {
     phaseItems = phaseItems.concat(newItems);
   }
   }
-  // Move backgrounds
+
   BG_LAYERS.far.x -= (obstacleSpeed * BG_LAYERS.far.speed * BG_LAYERS.far.parallaxMultiplier);
   BG_LAYERS.mid.x -= obstacleSpeed * BG_LAYERS.mid.speed;
   BG_LAYERS.near.x -= obstacleSpeed * BG_LAYERS.near.speed;
   
-  // Phase transition effects
+
   if (currentPhase === 4) {
-    BG_LAYERS.far.y = Math.sin(Date.now()/5000) * 2; // Very slow vertical float
-    BG_LAYERS.far.x += Math.sin(Date.now()/8000) * 0.1; // Micro horizontal drift
+    BG_LAYERS.far.y = Math.sin(Date.now()/5000) * 2; 
+    BG_LAYERS.far.x += Math.sin(Date.now()/8000) * 0.1; 
   } else {
     BG_LAYERS.far.y = 0;
     BG_LAYERS.mid.y = 24;
@@ -445,13 +452,13 @@ function draw() {
   ctx.fillStyle = ctx.bgTintColors[currentPhase].far;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
-  // Draw parallax layers
+ 
   drawParallaxLayer(BG_LAYERS.far);
   drawParallaxLayer(BG_LAYERS.mid);
   drawParallaxLayer(BG_LAYERS.near);
   
 
-  // 1. Dibuja el fondo del efecto espiral primero
+  
   if (spiralEffectActive) {
     ctx.save();
     ctx.fillStyle = 'rgba(10, 0, 20, 0.7)';
@@ -471,17 +478,17 @@ function draw() {
     ctx.restore();
   }
 
-  // 2. Dibuja las partículas (sobre el fondo pero bajo otros elementos)
+  
   particles.forEach(p => p.draw(ctx));
 
-  // 3. Dibuja obstáculos y power-ups
+  
   obstacles.forEach(o => o.draw(ctx));
   powerUps.forEach(p => p.draw(ctx));
 
-  // 4. Dibuja al jugador (encima de todo)
+  
   player.draw(ctx);
 
-  // 5. Dibuja la UI
+  
   ctx.fillStyle = "#fff";
   ctx.font = "20px Courier";
   ctx.fillText("Score: " + score, 10, 30);
@@ -506,7 +513,7 @@ function draw() {
   if (activePowerUp === "lonely" || ctx.lonelyDarkness > 0) {
     ctx.save();
     
-    // Continue fading out even after powerup ends
+   
     if (activePowerUp !== "lonely" && ctx.lonelyDarkness > 0) {
       ctx.lonelyDarkness = Math.max(0, ctx.lonelyDarkness - 0.01);
     }
@@ -520,7 +527,6 @@ function draw() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     
-    // Add subtle vignette
     const gradient = ctx.createRadialGradient(
       canvas.width/2, canvas.height/2, 100,
       canvas.width/2, canvas.height/2, 300
@@ -536,7 +542,7 @@ function draw() {
 
 function drawParallaxLayer(layer) {
   if (!layer.img.complete) {
-    // Fallback: Solid color if image not loaded
+    
     ctx.fillStyle = ctx.bgTintColors[currentPhase][layer === BG_LAYERS.far ? "far" : 
                        layer === BG_LAYERS.mid ? "mid" : "near"];
     ctx.fillRect(0, layer.y, canvas.width, layer.height);
@@ -546,10 +552,10 @@ function drawParallaxLayer(layer) {
   const drawY = canvas.height - layer.height + layer.y;
   const phase = currentPhase;
   
-  // Draw tiled background
+  
   let currentX = layer.x % layer.width;
   while (currentX < canvas.width) {
-    // Base image
+    
     ctx.save();
     if (phase === 4) {
       ctx.filter = `hue-rotate(${Math.sin(layer.x/500)*15}deg) contrast(1.2)`;
@@ -561,7 +567,7 @@ function drawParallaxLayer(layer) {
     );
     ctx.restore();
     
-    // Glitch effect for ENDLESS phase
+    
     if (phase === 4 && Math.random() > 0.7) {
       ctx.save();
       ctx.globalAlpha = 0.3;
@@ -596,36 +602,36 @@ function activatePowerUp(type) {
     case "spiral":
       spiralEffectActive = true;
       particles = [];
-      // Add particle burst on activation
-       // Explosión inicial en espiral
+      
       for (let i = 0; i < 36; i++) {
       particles.push(new Particle(
-      (i / 36) * Math.PI * 2, // Ángulo equidistante
-      0 // Comenzando desde el centro
+      (i / 36) * Math.PI * 2, 
+      0 
       ));
      }
       canvas.style.backgroundColor = "#110033";
-      obstacleSpeed *= 0.7; // Only 30% speed reduction
-      player.jumpPower = ORIGINAL_JUMP_POWER * 1.3; // Better jumps
-      player.gravity = 0.3; // Reduced gravity for floaty feel
+      obstacleSpeed *= 0.7; 
+      player.jumpPower = ORIGINAL_JUMP_POWER * 1.3; 
+      player.gravity = 0.3; 
       break;
     case "lonely":
-       // New oppressive effect
-      ctx.lonelyDarkness = 0; // Start from 0
+       
+      ctx.lonelyDarkness = 0; 
       
-      // Clear all entities
+      
       obstacles = [];
       powerUps = [];
       allowSpawningObstacles = false;
       allowSpawningPowerUps = false;
       
-      // Audio effect
+      
       this.lonelySound = new Audio('assets/lonely_effect.ogg');
       this.lonelySound.volume = 0.4;
-      this.lonelySound.loop = true;  // Only if you want it to loop
+      this.lonelySound.loop = true;  
       this.lonelySound.play().catch(e => {});
       break;
   }
+  
 }
 
 function deactivatePowerUp() {
@@ -646,7 +652,7 @@ function deactivatePowerUp() {
       allowSpawningObstacles = true;
       allowSpawningPowerUps = true;
       
-      // Fade out sound if you added it
+      
       if (this.lonelySound) {
         const fadeOut = setInterval(() => {
           this.lonelySound.volume = Math.max(0, this.lonelySound.volume - 0.05);
@@ -673,12 +679,12 @@ class Player {
     this.gravity = 0.5;
     this.isJumping = false;
 
-    // Hitbox ajustada (15px margen izquierdo, 20px margen superior)
+    
     this.hitbox = {
       x: 15,
       y: 20,
-      width: 31, // 61 - 15 - 15
-      height: 50 // 90 - 20 - 20
+      width: 31, 
+      height: 50 
     };
 
     this.sprite = new Image();
@@ -693,11 +699,11 @@ class Player {
     this.frameDelay = 10;
 
     this.tintedSprite = new Image();
-    this.tintedSprite.src = "assets/Jon_Run2_tinted.png"; // Pre-made green version
+    this.tintedSprite.src = "assets/Jon_Run2_tinted.png"; 
     this.isTintedLoaded = false;
     this.tintedSprite.onload = () => this.isTintedLoaded = true;
     this.jumpSound = document.getElementById('jumpSound');
-    this.jumpSound.volume = 0.3; // Lower than background music
+    this.jumpSound.volume = 0.3; 
 
   }
   
@@ -705,7 +711,7 @@ class Player {
     if (!this.isJumping) {
       this.velocityY = -this.jumpPower;
       this.isJumping = true;
-      this.jumpSound.currentTime = 0; // Reset if already playing
+      this.jumpSound.currentTime = 0; 
       this.jumpSound.play().catch(e => console.log("Jump sound error:", e));
     }
   }
@@ -761,7 +767,7 @@ class Obstacle {
     this.height = height;
     this.speed = speed;
     
-    // Load obstacle images
+    
     this.images = {
       1: new Image(),
       2: new Image(),
@@ -775,14 +781,14 @@ class Obstacle {
   }
   
   draw(ctx) {
-    // Use image if loaded, otherwise fallback to rectangle
+    
     if (this.images[currentPhase] && this.images[currentPhase].complete) {
       ctx.drawImage(
         this.images[currentPhase],
         this.x, this.y, this.width, this.height
       );
       
-      // Add glitch effect for endless phase
+      
       if (currentPhase === 4 && this.distorted) {
         ctx.save();
         ctx.filter = `hue-rotate(${Math.sin(Date.now()/200)*90}deg)`;
@@ -794,7 +800,7 @@ class Obstacle {
         ctx.restore();
       }
     } else {
-      // Fallback to colored rectangles
+      
       switch (currentPhase) {
         case 1: ctx.fillStyle = "#800"; break;
         case 2: ctx.fillStyle = "#446"; break;
@@ -810,7 +816,7 @@ class Obstacle {
     this.x -= this.speed;
     
     if (spiralEffectActive) {
-      // Add sinusoidal wave movement to obstacles
+      
       this.y = GROUND_Y - this.height + 
                Math.sin(this.x * SPIRAL_WAVE_FREQUENCY + spiralWaveOffset) * SPIRAL_WAVE_AMPLITUDE;
     }
@@ -824,22 +830,19 @@ class Obstacle {
 }
 
 class PowerUp {
+
   constructor(x, y, type) {
     this.x = x;
     this.y = y;
-    this.width = 30;
-    this.height = 30;
+    this.width = 32;
+    this.height = 32;
     this.type = type;
-    this.color = this.getColorFromType();
-  }
-
-  getColorFromType() {
-    switch (this.type) {
-      case "eye": return "#00ff88";
-      case "spiral": return "#ff00aa";
-      case "lonely": return "#6f96b3";
-      default: return "#aaa";
-    }
+    this.img = new Image();
+    this.img.src = `assets/powerups/${type}.png`;
+    this.img.onerror = () => {
+      console.warn(`Power-up image missing: ${type}.png`);
+      this.img = null;
+    };
   }
 
   update() {
@@ -847,8 +850,17 @@ class PowerUp {
   }
 
   draw(ctx) {
-    ctx.fillStyle = this.color;
-    ctx.fillRect(this.x, this.y, this.width, this.height);
+    if (this.img && this.img.complete) {
+      ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
+    } else {
+      // Fallback colors
+      switch(this.type) {
+        case "eye": ctx.fillStyle = "#00ff88"; break;
+        case "spiral": ctx.fillStyle = "#ff00aa"; break;
+        case "lonely": ctx.fillStyle = "#6f96b3"; break;
+      }
+      ctx.fillRect(this.x, this.y, this.width, this.height);
+    }
   }
 
   isOffScreen() {
@@ -904,21 +916,21 @@ document.getElementById('volumeDown').addEventListener('click', function() {
   }
 });
 
-/// Muestra la pantalla de juego y oculta menú/créditos
+
 function startGame() {
   document.getElementById("menu").style.display = "none";
   document.getElementById("credits").style.display = "none";
   document.getElementById("gameCanvas").style.display = "block";
-  // Aquí llamas a tu initGame() o requestAnimationFrame(gameLoop)
+  
 }
 
-// Oculta menú y muestra créditos
+
 function showCredits() {
   document.getElementById("menu").style.display = "none";
   document.getElementById("credits").style.display = "flex";
 }
 
-// Vuelve de créditos al menú principal
+
 function showMenu() {
   document.getElementById("credits").style.display = "none";
   document.getElementById("menu").style.display = "flex";

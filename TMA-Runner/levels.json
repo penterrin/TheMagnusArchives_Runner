@@ -1,23 +1,24 @@
 {
-  "1": [  
+  "1": [
     { "x": 300, "type": "obstacle", "height": 50 },
     { "x": 600, "type": "obstacle", "height": 60 },
     { "x": 900, "type": "powerup", "powerupType": "eye", "y": 250 },
-    { "x": 1200, "type": "obstacle", "height": 70 },
-    { "x": 1500, "type": "obstacle", "height": 50 }
+    { "x": 1500, "type": "obstacle", "height": 70 },
+    { "x": 2000, "type": "powerup", "powerupType": "spiral", "y": 230 },
+    { "x": 2500, "type": "obstacle", "height": 50 }
   ],
-  "2": [  
-    { "x": 300, "type": "obstacle", "height": 70 },
-    { "x": 600, "type": "obstacle", "height": 80 },
-    { "x": 900, "type": "powerup", "powerupType": "spiral", "y": 230 },
-    { "x": 1200, "type": "obstacle", "height": 90 },
-    { "x": 1500, "type": "obstacle", "height": 70 }
+  "2": [
+    { "x": 400, "type": "obstacle", "height": 70 },
+    { "x": 800, "type": "powerup", "powerupType": "lonely", "y": 220 },
+    { "x": 1200, "type": "obstacle", "height": 80 },
+    { "x": 1800, "type": "powerup", "powerupType": "eye", "y": 240 },
+    { "x": 2400, "type": "obstacle", "height": 90 }
   ],
-  "3": [  
-    { "x": 600,  "type": "obstacle", "height": 70 },
-    { "x": 900,  "type": "obstacle", "height": 80 },
-    { "x": 1100, "type": "powerup", "powerupType": "lonely", "y": 240 },
-    { "x": 1400, "type": "obstacle", "height": 90 },
-    { "x": 1500, "type": "obstacle", "height": 100 }
+  "3": [
+    { "x": 500, "type": "obstacle", "height": 70 },
+    { "x": 1000, "type": "powerup", "powerupType": "spiral", "y": 230 },
+    { "x": 1500, "type": "obstacle", "height": 80 },
+    { "x": 2000, "type": "powerup", "powerupType": "lonely", "y": 250 },
+    { "x": 2500, "type": "obstacle", "height": 100 }
   ]
 }
